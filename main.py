@@ -2,18 +2,42 @@ import http.server
 import socketserver
 import zmq
 import json
+import uuid
 
 HOST = '0.0.0.0'
-PORT = 8000
+PORT = 8001
 
 GLB_DELIVERY_ADDR = "ipc:///var/lib/knowdy/delivery/inbox"
 GLB_COLLECTION_ADDR = "tcp://127.0.0.1:6908"
 
 
-def json_to_gsl(input_json: str) -> str:
+def json_to_gsl(input_json: str, ticket_id: str) -> str:
     input_ = json.loads(input_json)
-    output_ = json.dumps(input_)
 
+    output_ = '{knd::Task {tid %s} ' % str(ticket_id)
+
+    request = input_['request']
+    schema = request['schema']
+
+    user = request['user']
+    output_ += '{user '
+
+    auth = user['auth']
+    output_ += '(auth '
+
+    sid = auth['sid']
+    output_ += '{sid %s}) ' % sid
+
+    repo = user['repo']
+    output_ += '{repo '
+
+    add = repo['add']
+    output_ += '(add '
+
+    name = add['n']
+    output_ += '{n %s})' % name
+
+    print(output_)
     return output_
 
 
@@ -37,27 +61,32 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
 
+        ticket_id = uuid.uuid4()
+
+        return_body = dict()
+
         ctx = zmq.Context()
         socket = ctx.socket(zmq.PUSH)
         socket.connect(GLB_COLLECTION_ADDR)
 
         messages = []
 
-        task = """{knd::Task
-                      {tid 123456}
-                      {user
-                          (auth {sid AUTH_SERVER_SID})
-                          {repo
-                              (add {n R4S Content})}
-                      }
-                  }"""
+        try:
+            task = json_to_gsl(post_body, ticket_id).encode('utf-8')
 
-        messages.append(task.encode('utf-8'))
-        messages.append("None".encode('utf-8'))
+            messages.append(task)
+            messages.append("None".encode('utf-8'))
 
-        socket.send_multipart(messages)
+            socket.send_multipart(messages)
 
-        self.wfile.write(json_to_gsl(post_body).encode('utf-8'))
+            return_body['tid'] = str(ticket_id)
+
+        except KeyError as e:
+            return_body['error'] = "unknown key"
+        except Exception as e:
+            return_body['error'] = "internal error"
+
+        self.wfile.write(json.dumps(return_body).encode('utf-8'))
 
         return
 
