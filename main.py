@@ -11,7 +11,7 @@ GLB_DELIVERY_ADDR = "ipc:///var/lib/knowdy/delivery/inbox"
 GLB_COLLECTION_ADDR = "tcp://127.0.0.1:6908"
 
 
-def json_to_gsl(input_json: str, ticket_id: str) -> str:
+def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
     input_ = json.loads(input_json)
 
     output_ = ['{knd::Task {tid %s} ' % str(ticket_id)]
@@ -27,6 +27,13 @@ def json_to_gsl(input_json: str, ticket_id: str) -> str:
 
     sid = auth['sid']
     output_.append('{sid %s}) ' % sid)
+
+    if 'retrieve' in user:  # delivery server request hackery
+        tid = user['retrieve']['tid']
+
+        output_ = "{knd::Task {tid %s} {sid %s} {retrieve _obj}}" % (tid, sid)
+        print(output_)
+        return output_, True
 
     repo = user['repo']
     output_.append('{repo ')
@@ -52,7 +59,7 @@ def json_to_gsl(input_json: str, ticket_id: str) -> str:
 
     output_ = "".join(output_)
     print(output_)
-    return output_
+    return output_, False
 
 
 class JsonGateway(http.server.BaseHTTPRequestHandler):
@@ -79,28 +86,39 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         return_body = dict()
 
-        ctx = zmq.Context()
-        socket = ctx.socket(zmq.PUSH)
-        socket.connect(GLB_COLLECTION_ADDR)
-
         messages = []
 
         try:
-            task = json_to_gsl(post_body, ticket_id).encode('utf-8')
+            result = json_to_gsl(post_body, ticket_id)
+            task = result[0].encode('utf-8')
+
+            if result[1]:
+                ctx = zmq.Context()
+                socket = ctx.socket(zmq.REQ)
+                socket.connect(GLB_DELIVERY_ADDR)
+            else:
+                ctx = zmq.Context()
+                socket = ctx.socket(zmq.PUSH)
+                socket.connect(GLB_COLLECTION_ADDR)
 
             messages.append(task)
             messages.append("None".encode('utf-8'))
-
             socket.send_multipart(messages)
 
             return_body['tid'] = str(ticket_id)
+            return_body = json.dumps(return_body).encode('utf-8')
+
+            if result[1]:
+                head = socket.recv()
+                msg = socket.recv()
+                return_body = msg
 
         except KeyError as e:
             return_body['error'] = "unknown key"
         except Exception as e:
             return_body['error'] = "internal error"
 
-        self.wfile.write(json.dumps(return_body).encode('utf-8'))
+        self.wfile.write(return_body)
 
         return
 
