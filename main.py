@@ -14,29 +14,43 @@ GLB_COLLECTION_ADDR = "tcp://127.0.0.1:6908"
 def json_to_gsl(input_json: str, ticket_id: str) -> str:
     input_ = json.loads(input_json)
 
-    output_ = '{knd::Task {tid %s} ' % str(ticket_id)
+    output_ = ['{knd::Task {tid %s} ' % str(ticket_id)]
 
     request = input_['request']
     schema = request['schema']
 
     user = request['user']
-    output_ += '{user '
+    output_.append('{user ')
 
     auth = user['auth']
-    output_ += '(auth '
+    output_.append('(auth ')
 
     sid = auth['sid']
-    output_ += '{sid %s}) ' % sid
+    output_.append('{sid %s}) ' % sid)
 
     repo = user['repo']
-    output_ += '{repo '
+    output_.append('{repo ')
 
-    add = repo['add']
-    output_ += '(add '
+    if 'add' in repo:  # new repo add case
+        add = repo['add']
+        output_.append('(add ')
 
-    name = add['n']
-    output_ += '{n %s})' % name
+        name = add['n']
+        output_.append('{n %s})' % name)
 
+    elif 'n' in repo:  # some actions with existent repo
+        name = repo['n']
+        output_.append('{n %s}' % name)
+
+        class_ = repo['class']
+        class_name = class_['n']
+
+        output_.append('{class {n %s}}' % class_name)
+
+    else:
+        raise KeyError
+
+    output_ = "".join(output_)
     print(output_)
     return output_
 
