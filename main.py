@@ -3,6 +3,7 @@ import socketserver
 import zmq
 import json
 import uuid
+import logging
 
 HOST = '0.0.0.0'
 PORT = 8001
@@ -32,7 +33,6 @@ def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
         tid = user['retrieve']['tid']
 
         output_ = "{knd::Task {tid %s} {sid %s} {retrieve _obj}}" % (tid, sid)
-        print(output_)
         return output_, True
 
     repo = user['repo']
@@ -52,13 +52,17 @@ def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
         class_ = repo['class']
         class_name = class_['n']
 
-        output_.append('{class {n %s}}' % class_name)
+        output_.append('{class {n %s} ' % class_name)
+
+        if 'obj' in class_:
+            output_.append('{obj {n %s}}' % class_['obj']['n'])
+
+        output_.append('}')
 
     else:
         raise KeyError
 
     output_ = "".join(output_)
-    print(output_)
     return output_, False
 
 
@@ -91,6 +95,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         try:
             result = json_to_gsl(post_body, ticket_id)
             task = result[0].encode('utf-8')
+            logging.debug(task)
 
             if result[1]:
                 ctx = zmq.Context()
@@ -106,24 +111,29 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             socket.send_multipart(messages)
 
             return_body['tid'] = str(ticket_id)
-            return_body = json.dumps(return_body).encode('utf-8')
 
             if result[1]:
                 head = socket.recv()
                 msg = socket.recv()
-                return_body = msg
+                return_body = json.loads(msg)
 
         except KeyError as e:
-            return_body['error'] = "unknown key"
+            return_body['error'] = "malformed request"
+            logging.warning("malformed request")
         except Exception as e:
             return_body['error'] = "internal error"
+            logging.exception("internal error")
 
+        return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
 
         return
 
 Handler = JsonGateway
 
+logging.basicConfig(level=logging.DEBUG)
+
 httpd = socketserver.TCPServer((HOST, PORT), Handler)
-print("serving at %s:%s" % (HOST, PORT))
+logging.info("serving at %s:%s" %(HOST, PORT))
+
 httpd.serve_forever()
