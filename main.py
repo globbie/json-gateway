@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import http.server
 import socketserver
 import zmq
@@ -6,14 +8,6 @@ import uuid
 import logging
 import argparse
 import enum
-
-HOST = '0.0.0.0'
-PORT = 8001
-
-GLB_DELIVERY_ADDR = "ipc:///var/lib/knowdy/delivery/inbox"
-GLB_COLLECTION_ADDR = "tcp://127.0.0.1:6908"
-
-logging.basicConfig(format='%(filename)s:%(lineno)d [%(levelname)-6s] (%(asctime)s): %(message)s', level=logging.DEBUG)
 
 
 class KnowdyService(enum.Enum):
@@ -147,15 +141,22 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return
 
 
-#parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
-#parser.add_argument('host', required=False, type=str, default='0.0.0.0', help='interface to listen')
+if __name__ == '__main__':
+    logging.basicConfig(format='%(filename)s:%(lineno)d [%(levelname)-6s] (%(asctime)s): %(message)s',
+                        level=logging.INFO)
 
-#args = parser.parse_args()
-#print(args.host)
+    parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
+    parser.add_argument('-i', '--interface', default='0.0.0.0', type=str, help='The interface to listen')
+    parser.add_argument('-p', '--port', default='8000', type=int, help='Service port')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Show debug logs')
 
-Handler = JsonGateway
+    args = parser.parse_args()
+    if args.verbose:
+        logging.basicConfig(leve=logging.DEBUG)
 
-httpd = socketserver.TCPServer((HOST, PORT), Handler)
-logging.info("serving at %s:%s" %(HOST, PORT))
+    Handler = JsonGateway
 
-httpd.serve_forever()
+    httpd = socketserver.TCPServer((args.interface, args.port), Handler)
+    logging.info("serving at %s:%s" % (args.interface, args.port))
+
+    httpd.serve_forever()
