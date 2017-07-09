@@ -127,8 +127,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
             if service == KnowdyService.delivery:
                 head = socket.recv()
-                msg = socket.recv()
-                logger.debug(msg.decode('utf-8'))
+                msg = socket.recv().decode('utf-8')
+                logger.debug(msg)
                 return_body = json.loads(msg)
 
         except KeyError as e:
