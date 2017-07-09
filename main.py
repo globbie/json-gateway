@@ -5,9 +5,12 @@ import socketserver
 import zmq
 import json
 import uuid
-import logging
+import logging.handlers
 import argparse
 import enum
+
+
+logger = logging.getLogger(__name__)
 
 
 class KnowdyService(enum.Enum):
@@ -105,8 +108,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             task = result[0].encode('utf-8')
             service = result[1]
 
-            logging.debug(task)
-            logging.debug(repr(service))
+            logger.debug(task)
+            logger.debug(repr(service))
 
             ctx = zmq.Context()
             if service == KnowdyService.delivery:
@@ -125,15 +128,15 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             if service == KnowdyService.delivery:
                 head = socket.recv()
                 msg = socket.recv()
-                logging.debug(msg.decode('utf-8'))
+                logger.debug(msg.decode('utf-8'))
                 return_body = json.loads(msg)
 
         except KeyError as e:
             return_body['error'] = "malformed request"
-            logging.warning("malformed request")
+            logger.warning("malformed request")
         except Exception as e:
             return_body['error'] = "internal error"
-            logging.exception("internal error")
+            logger.exception("internal error")
 
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
@@ -142,21 +145,29 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format='%(filename)s:%(lineno)d [%(levelname)-6s] (%(asctime)s): %(message)s',
-                        level=logging.INFO)
-
     parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
     parser.add_argument('-i', '--interface', default='0.0.0.0', type=str, help='The interface to listen')
     parser.add_argument('-p', '--port', default='8000', type=int, help='Service port')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show debug logs')
+    parser.add_argument('-l', '--log-path', default='json-gsl-gateway.log', help='log file')
 
     args = parser.parse_args()
+
+    logger.setLevel(logging.INFO)
     if args.verbose:
-        logging.basicConfig(leve=logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+
+    handler = logging.handlers.RotatingFileHandler(args.log_path, maxBytes=(50 * 1024 ** 2), backupCount=5)
+    handler.setLevel(logger.level)
+
+    formatter = logging.Formatter('%(filename)s:%(lineno)d [%(levelname)-6s] (%(asctime)s): %(message)s')
+    handler.setFormatter(formatter)
+
+    logger.addHandler(handler)
 
     Handler = JsonGateway
 
     httpd = socketserver.TCPServer((args.interface, args.port), Handler)
-    logging.info("serving at %s:%s" % (args.interface, args.port))
+    logger.info("serving at %s:%s" % (args.interface, args.port))
 
     httpd.serve_forever()
