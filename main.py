@@ -4,12 +4,22 @@ import zmq
 import json
 import uuid
 import logging
+import argparse
+import enum
 
 HOST = '0.0.0.0'
 PORT = 8001
 
 GLB_DELIVERY_ADDR = "ipc:///var/lib/knowdy/delivery/inbox"
 GLB_COLLECTION_ADDR = "tcp://127.0.0.1:6908"
+
+logging.basicConfig(format='%(filename)s:%(lineno)d [%(levelname)-6s] (%(asctime)s): %(message)s', level=logging.DEBUG)
+
+
+class KnowdyService(enum.Enum):
+    delivery = {'address': 'ipc:///var/lib/knowdy/delivery/inbox'}
+    read = {'address': 'tcp://127.0.0.1:6900'}
+    write = {'address': 'tcp://127.0.0.1:6908'}
 
 
 def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
@@ -33,10 +43,12 @@ def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
         tid = user['retrieve']['tid']
 
         output_ = "{knd::Task {tid %s} {sid %s} {retrieve _obj}}" % (tid, sid)
-        return output_, True
+        return output_, KnowdyService.delivery
 
     repo = user['repo']
     output_.append('{repo ')
+
+    service = KnowdyService.write
 
     if 'add' in repo:  # new repo add case
         add = repo['add']
@@ -54,16 +66,17 @@ def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
 
         output_.append('{class {n %s} ' % class_name)
 
-        if 'obj' in class_:
+        if 'obj' in class_:  # read object
             output_.append('{obj {n %s}}' % class_['obj']['n'])
 
         output_.append('}')
+        service = KnowdyService.read
 
     else:
         raise KeyError
 
     output_ = "".join(output_)
-    return output_, False
+    return output_, service
 
 
 class JsonGateway(http.server.BaseHTTPRequestHandler):
@@ -94,17 +107,20 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         try:
             result = json_to_gsl(post_body, ticket_id)
-            task = result[0].encode('utf-8')
-            logging.debug(task)
 
-            if result[1]:
-                ctx = zmq.Context()
+            task = result[0].encode('utf-8')
+            service = result[1]
+
+            logging.debug(task)
+            logging.debug(repr(service))
+
+            ctx = zmq.Context()
+            if service == KnowdyService.delivery:
                 socket = ctx.socket(zmq.REQ)
-                socket.connect(GLB_DELIVERY_ADDR)
             else:
-                ctx = zmq.Context()
                 socket = ctx.socket(zmq.PUSH)
-                socket.connect(GLB_COLLECTION_ADDR)
+
+            socket.connect(service.value['address'])
 
             messages.append(task)
             messages.append("None".encode('utf-8'))
@@ -112,9 +128,10 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
             return_body['tid'] = str(ticket_id)
 
-            if result[1]:
+            if service == KnowdyService.delivery:
                 head = socket.recv()
                 msg = socket.recv()
+                logging.debug(msg.decode('utf-8'))
                 return_body = json.loads(msg)
 
         except KeyError as e:
@@ -129,9 +146,14 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         return
 
-Handler = JsonGateway
 
-logging.basicConfig(level=logging.DEBUG)
+#parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
+#parser.add_argument('host', required=False, type=str, default='0.0.0.0', help='interface to listen')
+
+#args = parser.parse_args()
+#print(args.host)
+
+Handler = JsonGateway
 
 httpd = socketserver.TCPServer((HOST, PORT), Handler)
 logging.info("serving at %s:%s" %(HOST, PORT))
