@@ -112,12 +112,12 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.wfile.write(msg)
 
     def send_wait_reply(self):
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
         return_body = dict()
         return_body['status'] = "in progress"
         return_body['estimate'] = "5m"
         self.send_response(202)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
         reply = json.dumps(return_body).encode('utf-8')
         self.wfile.write(reply)
 
@@ -125,9 +125,9 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body = dict()
         return_body['error'] = "malformed request"
         logger.warning("malformed request")
+        self.send_response(400)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        self.send_response(400)
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
         
