@@ -167,7 +167,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         ticket_id = uuid.uuid4()
 
         return_body = dict()
-        self.send_header('Content-type', 'application/json')
 
         messages = []
         try:
@@ -208,6 +207,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             logger.exception("internal error")
             self.send_response(500)
 
+        self.send_header('Content-type', 'application/json')
         self.end_headers()
 
         return_body = json.dumps(return_body).encode('utf-8')
