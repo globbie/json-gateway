@@ -9,6 +9,7 @@ import logging.handlers
 import argparse
 import enum
 
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -81,12 +82,82 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         super(JsonGateway, self).__init__(request, client_address, server)
         pass
 
-    def do_GET(self):
-        self.send_response(200)
+    def ask_delivery(self):
+        ctx = zmq.Context()
+        socket = ctx.socket(zmq.REQ)
+        
+        socket.connect(KnowdyService.delivery.value['address'])
 
+        messages = []
+        task = "{knd::Task {tid %s} {sid AUTH_SERVER_SID} {retrieve _obj}}" % (self.tid)
+
+        messages.append(task.encode('utf-8'))
+        messages.append("None".encode('utf-8'))
+        socket.send_multipart(messages)
+
+        head = socket.recv()
+        msg = socket.recv()
+
+        logger.debug(msg)
+
+        body = json.loads(msg.decode('utf-8'))
+        if "result" not in body:
+            self.send_wait_reply()
+            return
+        
+        self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        return
+        #reply = json.dumps(body).encode('utf-8')
+        self.wfile.write(msg)
+
+    def send_wait_reply(self):
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        return_body = dict()
+        return_body['status'] = "in progress"
+        return_body['estimate'] = "5m"
+        self.send_response(202)
+        reply = json.dumps(return_body).encode('utf-8')
+        self.wfile.write(reply)
+
+    def send_bad_request(self):
+        return_body = dict()
+        return_body['error'] = "malformed request"
+        logger.warning("malformed request")
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.send_response(400)
+        return_body = json.dumps(return_body).encode('utf-8')
+        self.wfile.write(return_body)
+        
+    def do_GET(self):
+        params = dict()
+        
+        query = urlparse(self.path).query
+        if "&" not in query:
+            self.send_bad_request()
+            return
+
+        for qc in query.split("&"):
+            if "=" not in qc:
+                self.send_bad_request()
+                return
+            (k, v) = qc.split("=")
+            params[k] = v
+            
+        if "sid" not in params:
+            self.send_bad_request()
+            return
+
+        if "tid" not in params:
+            self.send_bad_request()
+            return
+
+        self.tid = params["tid"]
+        self.sid = params["sid"]
+        self.ask_delivery()
+        
 
     def do_POST(self):
         self.send_response(200)
@@ -101,10 +172,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body = dict()
 
         messages = []
-
         try:
             result = json_to_gsl(post_body, ticket_id)
-
             task = result[0].encode('utf-8')
             service = result[1]
 
@@ -135,9 +204,11 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         except KeyError as e:
             return_body['error'] = "malformed request"
             logger.warning("malformed request")
+            self.send_response(400)
         except Exception as e:
             return_body['error'] = "internal error"
             logger.exception("internal error")
+            self.send_response(500)
 
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
