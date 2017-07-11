@@ -130,7 +130,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
                 msg = socket.recv().decode('utf-8')
                 logger.debug(msg)
                 return_body = json.loads(msg)
-
+            else:
+                self.send_response(202)
         except KeyError as e:
             return_body['error'] = "malformed request"
             logger.warning("malformed request")
