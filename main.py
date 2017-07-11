@@ -160,8 +160,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         
 
     def do_POST(self):
-        self.send_header('Content-type', 'application/json')
-        self.end_headers()
 
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
@@ -169,6 +167,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         ticket_id = uuid.uuid4()
 
         return_body = dict()
+        self.send_header('Content-type', 'application/json')
 
         messages = []
         try:
@@ -208,6 +207,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             return_body['error'] = "internal error"
             logger.exception("internal error")
             self.send_response(500)
+
+        self.end_headers()
 
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
