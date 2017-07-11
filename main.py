@@ -160,7 +160,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         
 
     def do_POST(self):
-        self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
 
@@ -194,13 +193,13 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
             return_body['tid'] = str(ticket_id)
 
+            self.send_response(202)
+
             if service == KnowdyService.delivery:
                 head = socket.recv()
                 msg = socket.recv().decode('utf-8')
                 logger.debug(msg)
                 return_body = json.loads(msg)
-            else:
-                self.send_response(202)
         except KeyError as e:
             return_body['error'] = "malformed request"
             logger.warning("malformed request")
