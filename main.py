@@ -87,8 +87,7 @@ def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
 class JsonGateway(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         super(JsonGateway, self).__init__(request, client_address, server)
-        pass
-
+    
     def ask_delivery(self):
         ctx = zmq.Context()
         socket = ctx.socket(zmq.REQ)
@@ -305,6 +304,7 @@ if __name__ == '__main__':
     logger.addHandler(handler)
 
     Handler = JsonGateway
+    Handler.server_version = "Knowdy HTTP Gateway"
 
     httpd = socketserver.TCPServer((args.interface, args.port), Handler)
     logger.info("serving at %s:%s" % (args.interface, args.port))
