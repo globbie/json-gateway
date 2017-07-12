@@ -32,8 +32,9 @@ def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
     schema = request['schema']
 
     if 'async' in input_:
-        is_async = True
-        
+        if input_['async']:
+            is_async = True
+    
     user = request['user']
     output_.append('{user ')
 
