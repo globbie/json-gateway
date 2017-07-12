@@ -8,11 +8,13 @@ import uuid
 import logging.handlers
 import argparse
 import enum
+from time import sleep
 
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
-
+MAX_RETRIEVE_ATTEMPTS = 10
+RETRIEVE_TIMEOUT = 0.05 # ms
 
 class KnowdyService(enum.Enum):
     delivery = {'address': 'ipc:///var/lib/knowdy/delivery/inbox'}
@@ -20,14 +22,18 @@ class KnowdyService(enum.Enum):
     write = {'address': 'tcp://127.0.0.1:6908'}
 
 
-def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
+def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
+    is_async = False
     input_ = json.loads(input_json)
-
-    output_ = ['{knd::Task {tid %s} ' % str(ticket_id)]
+    
+    output_ = ['{knd::Task {tid %s} ' % str(tid)]
 
     request = input_['request']
     schema = request['schema']
 
+    if 'async' in input_:
+        is_async = True
+        
     user = request['user']
     output_.append('{user ')
 
@@ -41,7 +47,7 @@ def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
         tid = user['retrieve']['tid']
 
         output_ = "{knd::Task {tid %s} {sid %s} {retrieve _obj}}" % (tid, sid)
-        return output_, KnowdyService.delivery
+        return output_, KnowdyService.delivery, is_async
 
     repo = user['repo']
     output_.append('{repo ')
@@ -74,7 +80,7 @@ def json_to_gsl(input_json: str, ticket_id: str) -> (str, bool):
         raise KeyError
 
     output_ = "".join(output_)
-    return output_, service
+    return output_, service, is_async
 
 
 class JsonGateway(http.server.BaseHTTPRequestHandler):
@@ -130,7 +136,62 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
+
+
+    def async_reply(self):
+        return_body = dict()
+        return_body['tid'] = str(self.tid)
+        self.send_response(202)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        return_body = json.dumps(return_body).encode('utf-8')
+        self.wfile.write(return_body)
+
+    def retrieve_result(self, socket):
+        head = socket.recv()
+        msg = socket.recv().decode('utf-8')
+        logger.debug(msg)
+        return_body = json.loads(msg)
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        return_body = json.dumps(return_body).encode('utf-8')
+        self.wfile.write(return_body)
+
+    def wait_for_result(self):
+        messages = []
+        task = "{knd::Task {tid %s} {sid AUTH_SERVER_SID} {retrieve _obj}}" % (self.tid)
+        messages.append(task.encode('utf-8'))
+        messages.append("None".encode('utf-8'))
+        msg = "{\"error\": \"timed out\"}".encode('utf-8')
+        timeout = RETRIEVE_TIMEOUT
         
+        while 1:
+            sleep(timeout)
+            ctx = zmq.Context()
+            socket = ctx.socket(zmq.REQ)
+            socket.connect(KnowdyService.delivery.value['address'])
+            socket.send_multipart(messages)
+
+            head = socket.recv()
+            msg = socket.recv()
+            logger.debug(msg)
+            socket.close()
+            
+            body = json.loads(msg.decode('utf-8'))
+            if not 'wait' in body:
+                break
+            
+            num_attempts += 1
+            if num_attempts > MAX_RETRIEVE_ATTEMPTS:
+                break
+            timeout *= 2
+        
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(msg)
+       
     def do_GET(self):
         params = dict()
         
@@ -160,20 +221,22 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         
 
     def do_POST(self):
+        is_async = False
 
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
 
-        ticket_id = uuid.uuid4()
+        self.tid = uuid.uuid4()
 
         return_body = dict()
 
         messages = []
         try:
-            result = json_to_gsl(post_body, ticket_id)
+            result = json_to_gsl(post_body, self.tid)
             task = result[0].encode('utf-8')
             service = result[1]
-
+            is_async = result[2]
+            
             logger.debug(task)
             logger.debug(repr(service))
 
@@ -189,31 +252,34 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             messages.append("None".encode('utf-8'))
             socket.send_multipart(messages)
 
-            return_body['tid'] = str(ticket_id)
-
-            self.send_response(202)
-
+            if is_async:
+                self.async_reply()
+                socket.close()
+                return
+            
             if service == KnowdyService.delivery:
-                head = socket.recv()
-                msg = socket.recv().decode('utf-8')
-                logger.debug(msg)
-                return_body = json.loads(msg)
+                self.retrieve_result(socket)
+                socket.close()
+                return
+
+            socket.close()
+            self.wait_for_result()
+            return
+        
         except KeyError as e:
             return_body['error'] = "malformed request"
             logger.warning("malformed request")
             self.send_response(400)
         except Exception as e:
+            print(e)
             return_body['error'] = "internal error"
             logger.exception("internal error")
             self.send_response(500)
 
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
-
-        return
 
 
 if __name__ == '__main__':
