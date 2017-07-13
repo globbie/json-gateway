@@ -165,6 +165,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         messages.append("None".encode('utf-8'))
         msg = "{\"error\": \"timed out\"}".encode('utf-8')
         timeout = RETRIEVE_TIMEOUT
+        num_attempts = 0
         
         while 1:
             sleep(timeout)
