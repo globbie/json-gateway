@@ -1,0 +1,8 @@
+[Unit]
+Description=Knowdy Json Gateway Service
+After=network.target
+
+[Service]
+Type=simple
+User=json-gateway
+ExecStart=/home/json-gateway/json-gateway/main.py

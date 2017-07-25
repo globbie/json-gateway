@@ -14,7 +14,8 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
-RETRIEVE_TIMEOUT = 0.05 # ms
+RETRIEVE_TIMEOUT = 0.05  # ms
+
 
 class KnowdyService(enum.Enum):
     delivery = {'address': 'ipc:///var/lib/knowdy/delivery/inbox'}
@@ -114,7 +115,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        #reply = json.dumps(body).encode('utf-8')
+        # reply = json.dumps(body).encode('utf-8')
         self.wfile.write(msg)
 
     def send_wait_reply(self):
@@ -136,7 +137,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
-
 
     def async_reply(self):
         return_body = dict()
@@ -160,7 +160,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def wait_for_result(self):
         messages = []
-        task = "{knd::Task {tid %s} {sid AUTH_SERVER_SID} {retrieve _obj}}" % (self.tid)
+        task = "{knd::Task {tid %s} {sid AUTH_SERVER_SID} {retrieve _obj}}" % self.tid
         messages.append(task.encode('utf-8'))
         messages.append("None".encode('utf-8'))
         msg = "{\"error\": \"timed out\"}".encode('utf-8')
@@ -220,7 +220,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.sid = params["sid"]
         self.ask_delivery()
         
-
     def do_POST(self):
         is_async = False
 
