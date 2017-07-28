@@ -1,0 +1,10 @@
+{
+  "schema": {
+    "n": "Knowdy gateway test scheme",
+    "user": { "sid": "some session sid" },
+    "repo": {
+      "action": "new",
+      "n": "base repository"
+    }
+  }
+}
