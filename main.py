@@ -180,7 +180,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             socket.close()
 
             body = json.loads(msg.decode('utf-8'))
-            if not 'wait' in body:
+            if 'wait' not in body:
                 break
 
             num_attempts += 1
@@ -221,8 +221,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.ask_delivery()
 
     def do_POST(self):
-        is_async = False
-
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
 
@@ -271,7 +269,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             logger.warning("malformed request")
             self.send_response(400)
         except Exception as e:
-            print(e)
+            logger.exception(e)
             return_body['error'] = "internal error"
             logger.exception("internal error")
             self.send_response(500)

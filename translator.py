@@ -4,6 +4,9 @@ import logging
 import json
 import enum
 
+# todo: move here service enumerator
+# todo: describe translator result class containing gsl, service and async flag
+
 
 class Action(enum.Enum):
     new = 'new'
