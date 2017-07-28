@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
 
-import inspect
 import logging
 import json
 import enum
-
-
-def debug(msg):
-    frame, filename, line_number, function_name, lines, index = inspect.getouterframes(inspect.currentframe())[1]
-
-    line = lines[0]
-    indentation_level = line.find(line.lstrip())
-    logging.debug('{i}{m}'.format(i=' '*indentation_level, m=msg))
 
 
 class Action(enum.Enum):
@@ -21,12 +12,12 @@ class Action(enum.Enum):
 
 
 def json_parse_unit(unit_key: str, input_dict: dict) -> str:
-    debug('parsing \'%s\' unit' % unit_key)
+    logging.debug('parsing \'%s\' unit' % unit_key)
 
     output_dict = []
     action = Action.get
 
-    debug(input_dict)
+    logging.debug(input_dict)
 
     if 'action' in input_dict:
         value = input_dict['action']
@@ -43,7 +34,7 @@ def json_parse_unit(unit_key: str, input_dict: dict) -> str:
         else:
             raise ValueError
 
-    debug('action \'%s\'' % action.value)
+    logging.debug('action \'%s\'' % action.value)
 
     if action == Action.new:
         output_dict.append('(')
@@ -58,7 +49,7 @@ def json_parse_unit(unit_key: str, input_dict: dict) -> str:
         if type(value) != str:
             raise TypeError
 
-        debug('name: \'%s\'' % value)
+        logging.debug('name: \'%s\'' % value)
         output_dict.append(' %s' % value)
 
     for key, value in input_dict.items():
@@ -70,7 +61,7 @@ def json_parse_unit(unit_key: str, input_dict: dict) -> str:
         if type(value) == dict:
             output_dict.append(json_parse_unit(key, value))
         elif type(value) == str:
-            debug('appending %s : %s' % (key, value))
+            logging.debug('appending %s : %s' % (key, value))
             output_dict.append('{%s %s}' % (key, value))
 
     if action == Action.new:
@@ -78,7 +69,7 @@ def json_parse_unit(unit_key: str, input_dict: dict) -> str:
     else:
         output_dict.append('}')
 
-    debug(output_dict)
+    logging.debug(output_dict)
     return "".join(output_dict)
 
 
