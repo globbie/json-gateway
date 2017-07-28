@@ -84,7 +84,7 @@ def json_to_gsl(input_str: str) -> str:
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.ERROR)
 
     input_array = []
     try:

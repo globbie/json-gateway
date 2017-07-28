@@ -1,0 +1,4 @@
+{schema Knowdy gateway test scheme
+    {user {sid some session sid}}
+    {repo base repository}
+}
