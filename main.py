@@ -203,32 +203,35 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         filename = self.path
         if self.path.endswith("/"):
             filename += "index.html"
-
+        
         try:
-            f = open(curdir + sep + filename)
+            f = open(curdir + sep + filename, mode='rb')
             self.send_response(200)
             data = f.read()
             text = None
             if filename.endswith(".html"):
                 self.send_header('Content-type', 'text/html')
-                text = data.encode("utf-8")
             elif  filename.endswith(".js"):
                 self.send_header('Content-type', 'text/javascript')
-                text = data.encode("utf-8")
             elif  filename.endswith(".css"):
                 self.send_header('Content-type', 'text/css')
-                text = data.encode("utf-8")
             elif  filename.endswith(".svg"):
                 self.send_header('Content-type', 'image/svg+xml')
-                text = data.encode("utf-8")
+            elif filename.endswith(".jpg"):
+                self.send_header('Content-type', 'image/jpeg')
+            elif filename.endswith(".woff"):
+                self.send_header('Content-type', 'application/font-woff')
+            elif filename.endswith(".png"):
+                self.send_header('Content-type', 'image/png')
             else:
                 self.send_header('Content-type', 'application/binary')
-                
+
             self.end_headers()
-            if text:
-                self.wfile.write(text)
-            else:
-                self.wfile.write(data)
+
+            #if text:
+            #    self.wfile.write(text)
+            #else:
+            self.wfile.write(data)
                 
             f.close()
             return
