@@ -11,6 +11,9 @@ from time import sleep
 
 from urllib.parse import urlparse
 
+import translator
+from translator import KnowdyService
+
 logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
 RETRIEVE_TIMEOUT = 0.05  # ms
@@ -223,32 +226,29 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         messages = []
         try:
-            result = json_to_gsl(post_body, self.tid)
-            task = result[0].encode('utf-8')
-            service = result[1]
-            is_async = result[2]
+            translation = translator.Translation(post_body)
 
-            logger.debug(task)
-            logger.debug(repr(service))
+            logger.debug(translation.gsl_result)
+            logger.debug(repr(translation.service))
 
             ctx = zmq.Context()
-            if service == KnowdyService.delivery:
+            if translation.service == KnowdyService.delivery:
                 socket = ctx.socket(zmq.REQ)
             else:
                 socket = ctx.socket(zmq.PUSH)
 
-            socket.connect(service.value['address'])
+            socket.connect(translation.service.value['address'])
 
-            messages.append(task)
+            messages.append(translation.gsl_result)
             messages.append("None".encode('utf-8'))
             socket.send_multipart(messages)
 
-            if is_async:
+            if translation.async:
                 self.async_reply()
                 socket.close()
                 return
 
-            if service == KnowdyService.delivery:
+            if translation.service == KnowdyService.delivery:
                 self.retrieve_result(socket)
                 socket.close()
                 return
