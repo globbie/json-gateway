@@ -4,8 +4,11 @@ import logging
 import json
 import enum
 
-# todo: move here service enumerator
-# todo: describe translator result class containing gsl, service and async flag
+
+class KnowdyService(enum.Enum):
+    delivery = {'address': 'ipc:///var/lib/knowdy/delivery/inbox'}
+    read = {'address': 'tcp://127.0.0.1:6900'}
+    write = {'address': 'tcp://127.0.0.1:6908'}
 
 
 class Action(enum.Enum):
@@ -14,76 +17,95 @@ class Action(enum.Enum):
     select = 'select'
 
 
-def json_parse_unit(unit_key: str, input_dict: dict) -> str:
-    logging.debug('parsing \'%s\' unit' % unit_key)
+class Translation:
+    def __init__(self):
+        self.gsl_result = None
+        self.service = None
+        self.async = False
+        self.tid = None
 
-    output_dict = []
-    action = Action.get
+    def json_parse_unit(self, unit_key: str, input_dict: dict) -> str:
+        logging.debug('parsing \'%s\' unit' % unit_key)
 
-    logging.debug(input_dict)
+        output_dict = []
+        action = Action.get
 
-    if 'action' in input_dict:
-        value = input_dict['action']
+        logging.debug(input_dict)
 
-        if type(value) != str:
-            raise TypeError
+        #if 'retrieve' == unit_key:
+        #    if 'tid' in unit_key:
+        #        pass
+        #    else:
+        #        raise ValueError
 
-        if value == Action.new.value:
-            action = Action.new
-        elif value == Action.select.value:
-            action = Action.select
-        elif value == Action.get.value:
-            action = Action.get
+        if 'async' in input_dict:
+            if input_dict['async']:
+                self.async = True
+
+        if 'action' in input_dict:  # reserved keyword for unit type
+            value = input_dict['action']
+
+            if type(value) != str:
+                raise TypeError
+
+            if value == Action.new.value:
+                action = Action.new
+            elif value == Action.select.value:
+                action = Action.select
+            elif value == Action.get.value:
+                action = Action.get
+            else:
+                raise ValueError
+
+        logging.debug('action \'%s\'' % action.value)
+
+        if action == Action.new:
+            output_dict.append('(')
         else:
-            raise ValueError
+            output_dict.append('{')
 
-    logging.debug('action \'%s\'' % action.value)
+        output_dict.append(unit_key)
 
-    if action == Action.new:
-        output_dict.append('(')
-    else:
-        output_dict.append('{')
+        if 'n' in input_dict:  # reserved keyword for name
+            value = input_dict['n']
 
-    output_dict.append(unit_key)
+            if type(value) != str:
+                raise TypeError
 
-    if 'n' in input_dict:  # reserved keyword
-        value = input_dict['n']
+            logging.debug('name: \'%s\'' % value)
+            output_dict.append(' %s' % value)
 
-        if type(value) != str:
-            raise TypeError
+        for key, value in input_dict.items():
+            if key == 'action':
+                continue
+            if key == 'n':
+                continue
+            if key == 'async':
+                continue
 
-        logging.debug('name: \'%s\'' % value)
-        output_dict.append(' %s' % value)
+            if type(value) == dict:
+                output_dict.append(self.json_parse_unit(key, value))
+            elif type(value) == str:
+                logging.debug('appending %s : %s' % (key, value))
+                output_dict.append('{%s %s}' % (key, value))
 
-    for key, value in input_dict.items():
-        if key == 'action':
-            continue
-        if key == 'n':
-            continue
+        if action == Action.new:
+            output_dict.append(')')
+        else:
+            output_dict.append('}')
 
-        if type(value) == dict:
-            output_dict.append(json_parse_unit(key, value))
-        elif type(value) == str:
-            logging.debug('appending %s : %s' % (key, value))
-            output_dict.append('{%s %s}' % (key, value))
+        logging.debug(output_dict)
+        return "".join(output_dict)
 
-    if action == Action.new:
-        output_dict.append(')')
-    else:
-        output_dict.append('}')
+    def json_parse(self, input_: str):
+        input_dict = json.loads(input_)
+        output_list = []
 
-    logging.debug(output_dict)
-    return "".join(output_dict)
+        for key, value in input_dict.items():
+            output_list.append(self.json_parse_unit(key, input_dict[key]))
 
-
-def json_to_gsl(input_str: str) -> str:
-    input_dict = json.loads(input_str)
-    output_list = []
-
-    for key in input_dict:
-        output_list.append(json_parse_unit(key, input_dict[key]))
-
-    return "".join(output_list)
+        self.gsl_result = "".join(output_list)
+        return self
 
 
 if __name__ == '__main__':
@@ -97,5 +119,8 @@ if __name__ == '__main__':
         pass
 
     input_file = "\n".join(input_array)
-    print(json_to_gsl(input_file))
+    translation = Translation()
+    translation.json_parse(input_file)
+
+    print(translation.gsl_result)
 

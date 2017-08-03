@@ -7,7 +7,6 @@ import json
 import uuid
 import logging.handlers
 import argparse
-import enum
 from time import sleep
 
 from urllib.parse import urlparse
@@ -15,12 +14,6 @@ from urllib.parse import urlparse
 logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
 RETRIEVE_TIMEOUT = 0.05  # ms
-
-
-class KnowdyService(enum.Enum):
-    delivery = {'address': 'ipc:///var/lib/knowdy/delivery/inbox'}
-    read = {'address': 'tcp://127.0.0.1:6900'}
-    write = {'address': 'tcp://127.0.0.1:6908'}
 
 
 def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
