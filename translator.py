@@ -21,11 +21,11 @@ class Action(enum.Enum):
 
 
 class Translation:
-    def __init__(self, input_: str, tid: str = None):
+    def __init__(self, input_: str, tid_: str = None):
         self.gsl_result = None
         self.service = None
         self.async = False
-        self.tid = tid
+        self.tid = tid_
 
         self.json_parse(input_)
 
