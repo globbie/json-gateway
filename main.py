@@ -84,6 +84,8 @@ def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
 class JsonGateway(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         super(JsonGateway, self).__init__(request, client_address, server)
+        self.tid = None
+        self.sid = None
 
     def ask_delivery(self):
         ctx = zmq.Context()
@@ -220,13 +222,13 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
 
-        self.tid = uuid.uuid4()
+        self.tid = str(uuid.uuid4())
 
         return_body = dict()
 
         messages = []
         try:
-            translation = translator.Translation(post_body)
+            translation = translator.Translation(post_body, self.tid)
 
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
