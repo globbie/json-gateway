@@ -8,6 +8,7 @@ import uuid
 import logging.handlers
 import argparse
 from time import sleep
+from os import curdir, sep
 
 from urllib.parse import urlparse
 
@@ -24,7 +25,6 @@ def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
     input_ = json.loads(input_json)
 
     output_ = ['{knd::Task {tid %s} ' % str(tid)]
-
     request = input_['request']
     schema = request['schema']
 
@@ -47,35 +47,41 @@ def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
         output_ = "{knd::Task {tid %s} {sid %s} {retrieve _obj}}" % (tid, sid)
         return output_, KnowdyService.delivery, is_async
 
-    repo = user['repo']
-    output_.append('{repo ')
-
     service = KnowdyService.write
 
-    if 'add' in repo:  # new repo add case
-        add = repo['add']
-        output_.append('(add ')
-
-        name = add['n']
-        output_.append('{n %s})' % name)
-
-    elif 'n' in repo:  # some actions with existent repo
-        name = repo['n']
-        output_.append('{n %s}' % name)
-
-        class_ = repo['class']
-        class_name = class_['n']
-
-        output_.append('{class {n %s} ' % class_name)
-
-        if 'obj' in class_:  # read object
-            output_.append('{obj {n %s}}' % class_['obj']['n'])
-
-        output_.append('}')
+    if 'class' in user:
+        c = user['class']
+        output_.append('{class %s}' % c)
         service = KnowdyService.read
+        print(c)
+        
+    if 'repo' in user:
+        repo = user['repo']
+        output_.append('{repo ')
 
-    else:
-        raise KeyError
+        if 'add' in repo:  # new repo add case
+            add = repo['add']
+            output_.append('(add ')
+
+            name = add['n']
+            output_.append('{n %s})' % name)
+
+        elif 'n' in repo:  # some actions with existent repo
+            name = repo['n']
+            output_.append('{n %s}' % name)
+            
+            class_ = repo['class']
+            class_name = class_['n']
+        
+            output_.append('{class {n %s} ' % class_name)
+
+            if 'obj' in class_:  # read object
+                output_.append('{obj {n %s}}' % class_['obj']['n'])
+
+            output_.append('}')
+            service = KnowdyService.read
+        else:
+            raise KeyError
 
     output_ = "".join(output_)
     return output_, service, is_async
@@ -192,6 +198,45 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.wfile.write(msg)
 
     def do_GET(self):
+        filename = self.path
+        if self.path.endswith("/"):
+            filename += "index.html"
+        
+        try:
+            f = open(curdir + sep + filename, mode='rb')
+            self.send_response(200)
+            data = f.read()
+            text = None
+            if filename.endswith(".html"):
+                self.send_header('Content-type', 'text/html')
+            elif  filename.endswith(".js"):
+                self.send_header('Content-type', 'text/javascript')
+            elif  filename.endswith(".css"):
+                self.send_header('Content-type', 'text/css')
+            elif  filename.endswith(".svg"):
+                self.send_header('Content-type', 'image/svg+xml')
+            elif filename.endswith(".jpg"):
+                self.send_header('Content-type', 'image/jpeg')
+            elif filename.endswith(".woff"):
+                self.send_header('Content-type', 'application/font-woff')
+            elif filename.endswith(".png"):
+                self.send_header('Content-type', 'image/png')
+            else:
+                self.send_header('Content-type', 'application/binary')
+
+            self.end_headers()
+
+            #if text:
+            #    self.wfile.write(text)
+            #else:
+            self.wfile.write(data)
+                
+            f.close()
+            return
+        except IOError:
+            self.send_error(404, 'File Not Found: %s' % self.path)
+            return
+        
         params = dict()
 
         query = urlparse(self.path).query
