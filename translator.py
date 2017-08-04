@@ -23,7 +23,7 @@ class Action(enum.Enum):
 class Translation:
     def __init__(self, input_: str, tid_: str = None):
         self.gsl_result = None
-        self.service = None
+        self.service = KnowdyService.read
         self.async = False
         self.tid = tid_
 
@@ -61,8 +61,11 @@ class Translation:
 
             if value == Action.new.value:
                 action = Action.new
+                self.service = KnowdyService.write
+
             elif value == Action.select.value:
                 action = Action.select
+
             elif value == Action.get.value:
                 action = Action.get
             else:
@@ -134,3 +137,4 @@ if __name__ == '__main__':
     translation = Translation(input_file, str(tid))
 
     print(translation.gsl_result)
+    print(repr(translation.service))
