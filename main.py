@@ -57,7 +57,6 @@ def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
         c = user['class']
         output_.append('{class %s}' % c)
         service = KnowdyService.read
-        print(c)
         
     if 'repo' in user:
         repo = user['repo']
