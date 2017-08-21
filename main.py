@@ -19,73 +19,6 @@ logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
 RETRIEVE_TIMEOUT = 0.05  # ms
 
-
-def json_to_gsl(input_json: str, tid: str) -> (str, dict, bool):
-    is_async = False
-    input_ = json.loads(input_json)
-
-    output_ = ['{knd::Task {tid %s} ' % str(tid)]
-    request = input_['request']
-    schema = request['schema']
-
-    if 'async' in input_:
-        if input_['async']:
-            is_async = True
-
-    user = request['user']
-    output_.append('{user ')
-
-    auth = user['auth']
-    output_.append('(auth ')
-
-    sid = auth['sid']
-    output_.append('{sid %s}) ' % sid)
-
-    if 'retrieve' in user:  # delivery server request hackery
-        tid = user['retrieve']['tid']
-
-        output_ = "{knd::Task {tid %s} {sid %s} {retrieve _obj}}" % (tid, sid)
-        return output_, KnowdyService.delivery, is_async
-
-    service = KnowdyService.write
-
-    if 'class' in user:
-        c = user['class']
-        output_.append('{class %s}' % c)
-        service = KnowdyService.read
-        
-    if 'repo' in user:
-        repo = user['repo']
-        output_.append('{repo ')
-
-        if 'add' in repo:  # new repo add case
-            add = repo['add']
-            output_.append('(add ')
-
-            name = add['n']
-            output_.append('{n %s})' % name)
-
-        elif 'n' in repo:  # some actions with existent repo
-            name = repo['n']
-            output_.append('{n %s}' % name)
-            
-            class_ = repo['class']
-            class_name = class_['n']
-        
-            output_.append('{class {n %s} ' % class_name)
-
-            if 'obj' in class_:  # read object
-                output_.append('{obj {n %s}}' % class_['obj']['n'])
-
-            output_.append('}')
-            service = KnowdyService.read
-        else:
-            raise KeyError
-
-    output_ = "".join(output_)
-    return output_, service, is_async
-
-
 class JsonGateway(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         super(JsonGateway, self).__init__(request, client_address, server)
@@ -97,10 +30,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         socket = ctx.socket(zmq.REQ)
 
         socket.connect(KnowdyService.delivery.value['address'])
-
         messages = []
-        task = "{knd::Task {tid %s} {sid AUTH_SERVER_SID} {retrieve _obj}}" % (self.tid)
-
+        task = "{task {user{auth{sid AUTH_SERVER_SID}}{retrieve {tid %s}}}}" % (self.tid)
         messages.append(task.encode('utf-8'))
         messages.append("None".encode('utf-8'))
         socket.send_multipart(messages)
@@ -111,10 +42,12 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         logger.debug(msg)
 
         body = json.loads(msg.decode('utf-8'))
-        if "result" not in body:
+        if "status" in body:
             self.send_wait_reply()
             return
 
+        # TODO: set http return codes based on result
+        
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
@@ -163,7 +96,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def wait_for_result(self):
         messages = []
-        task = "{knd::Task {tid %s} {sid AUTH_SERVER_SID} {retrieve _obj}}" % self.tid
+        task = "{task  {user {auth{sid AUTH_SERVER_SID}} {retrieve {tid %s}}}}" % (self.tid)
         messages.append(task.encode('utf-8'))
         messages.append("None".encode('utf-8'))
         msg = "{\"error\": \"timed out\"}".encode('utf-8')
@@ -181,7 +114,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             msg = socket.recv()
             logger.debug(msg)
             socket.close()
-
+            print("RETRIEVAL attempt..")
+            print(msg)
             body = json.loads(msg.decode('utf-8'))
             if 'wait' not in body:
                 break
@@ -236,31 +170,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             self.send_error(404, 'File Not Found: %s' % self.path)
             return
         
-        params = dict()
-
-        query = urlparse(self.path).query
-        if "&" not in query:
-            self.send_bad_request()
-            return
-
-        for qc in query.split("&"):
-            if "=" not in qc:
-                self.send_bad_request()
-                return
-            (k, v) = qc.split("=")
-            params[k] = v
-
-        if "sid" not in params:
-            self.send_bad_request()
-            return
-
-        if "tid" not in params:
-            self.send_bad_request()
-            return
-
-        self.tid = params["tid"]
-        self.sid = params["sid"]
-        self.ask_delivery()
 
     def do_POST(self):
         length = int(self.headers['Content-Length'])
@@ -269,7 +178,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.tid = str(uuid.uuid4())
 
         return_body = dict()
-
         messages = []
         try:
             translation = translator.Translation(post_body, self.tid)
@@ -284,8 +192,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
                 socket = ctx.socket(zmq.PUSH)
 
             socket.connect(translation.service.value['address'])
-
-            messages.append(translation.gsl_result)
+            
+            messages.append(translation.gsl_result.encode('utf-8'))
             messages.append("None".encode('utf-8'))
             socket.send_multipart(messages)
 
@@ -315,9 +223,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        return_body = json.dumps(return_body).encode('utf-8')
-        self.wfile.write(return_body)
-
+        reply = json.dumps(return_body).encode('utf-8')
+        self.wfile.write(reply)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')

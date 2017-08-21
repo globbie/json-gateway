@@ -7,7 +7,6 @@ import uuid
 
 # todo: should reorder some fields in input json
 
-
 class KnowdyService(enum.Enum):
     delivery = {'address': 'ipc:///var/lib/knowdy/delivery/inbox'}
     read = {'address': 'tcp://127.0.0.1:6900'}
