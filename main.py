@@ -11,6 +11,7 @@ from time import sleep
 from os import curdir, sep
 
 from urllib.parse import urlparse
+import base64
 
 import translator
 from translator import KnowdyService
@@ -18,6 +19,7 @@ from translator import KnowdyService
 logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
 RETRIEVE_TIMEOUT = 0.05  # ms
+basic_auth_key = ""
 
 class JsonGateway(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
@@ -130,11 +132,11 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(msg)
 
-    def do_GET(self):
+    def run_GET(self):
         filename = self.path
         if self.path.endswith("/"):
             filename += "index.html"
-        
+
         try:
             f = open(curdir + sep + filename, mode='rb')
             self.send_response(200)
@@ -226,7 +228,38 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         reply = json.dumps(return_body).encode('utf-8')
         self.wfile.write(reply)
 
+    def do_HEAD(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+    def do_AUTHHEAD(self):
+        self.send_response(401)
+        self.send_header('WWW-Authenticate', 'Basic realm=\"test\"')
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+    def do_GET(self):
+        global basic_auth_key
+        if not 'Authorization' in self.headers:
+            self.do_AUTHHEAD()
+            self.wfile.write('no auth header received'.encode("utf-8"))
+            return
+
+        if self.headers['Authorization'] == basic_auth_key:
+            self.run_GET()
+            pass
+        else:
+            self.do_AUTHHEAD()
+            #self.wfile.write(self.headers['Authorization'])
+            self.wfile.write('not authenticated'.encode("utf-8"))
+            pass
+
 if __name__ == '__main__':
+    
+    key = base64.b64encode("test:test".encode("utf-8"))
+    basic_auth_key = "Basic " + key.decode("ascii")
+
     parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
     parser.add_argument('-i', '--interface', default='0.0.0.0', type=str, help='The interface to listen')
     parser.add_argument('-p', '--port', default='8000', type=int, help='Service port')
