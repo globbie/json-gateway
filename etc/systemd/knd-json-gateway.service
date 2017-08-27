@@ -4,5 +4,5 @@ After=network.target
 
 [Service]
 Type=simple
-User=json-gateway
+User=knowdy
 ExecStart=/usr/bin/knd-json-gateway -s -v
