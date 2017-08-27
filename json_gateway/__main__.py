@@ -281,8 +281,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
 
-
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
     parser.add_argument('-i', '--interface', default='0.0.0.0', type=str, help='The interface to listen')
     parser.add_argument('-p', '--port', default='8000', type=int, help='Service port')
@@ -310,3 +309,6 @@ if __name__ == '__main__':
     logger.info("serving at %s:%s" % (args.interface, args.port))
 
     httpd.serve_forever()
+
+if __name__ == '__main__':
+    main()
