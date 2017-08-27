@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
 RETRIEVE_TIMEOUT = 0.05  # ms
 
+
 class JsonGateway(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         super(JsonGateway, self).__init__(request, client_address, server)
@@ -131,7 +132,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(msg)
 
-
     def check_auth_token(self, tok):
         print(".. checking token: %s" % tok)
         ctx = zmq.Context()
@@ -209,7 +209,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         except IOError:
             self.send_error(404, 'File Not Found: %s' % self.path)
             return
-        
 
     def run_POST(self, rec):
         length = int(self.headers['Content-Length'])
@@ -301,9 +300,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             return
         self.do_AUTHHEAD()
 
-        
-if __name__ == '__main__':
-
+def main():
     parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
     parser.add_argument('-i', '--interface', default='0.0.0.0', type=str, help='The interface to listen')
     parser.add_argument('-p', '--port', default='8000', type=int, help='Service port')
@@ -329,3 +326,6 @@ if __name__ == '__main__':
     httpd = socketserver.TCPServer((args.interface, args.port), Handler)
     logger.info("serving at %s:%s" % (args.interface, args.port))
     httpd.serve_forever()
+
+if __name__ == '__main__':
+    main()
