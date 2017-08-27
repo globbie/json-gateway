@@ -96,6 +96,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def wait_for_result(self):
         messages = []
+        
         task = "{task  {user {auth{sid AUTH_SERVER_SID}} {retrieve {tid %s}}}}" % (self.tid)
         messages.append(task.encode('utf-8'))
         messages.append("None".encode('utf-8'))
@@ -114,7 +115,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             msg = socket.recv()
             logger.debug(msg)
             socket.close()
-            print("RETRIEVAL attempt..")
+            print("RETRIEVAL attempt: %d.." % num_attempts)
             print(msg)
             body = json.loads(msg.decode('utf-8'))
             if 'wait' not in body:
@@ -136,17 +137,20 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         ctx = zmq.Context()
         socket = ctx.socket(zmq.REQ)
         socket.connect(KnowdyService.auth.value['address'])
+
         messages = []
         task = "{task{user{auth{sid %s}}}}" % (tok)
         messages.append(task.encode('utf-8'))
         messages.append("None".encode('utf-8'))
         socket.send_multipart(messages)
 
+        # reply from auth
         head = socket.recv()
         msg = socket.recv()
         logger.debug(msg)
-
+        
         body = json.loads(msg.decode('utf-8'))
+        socket.close()
 
         http_code = 401
         if "http_code" in body:
@@ -155,7 +159,12 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         if http_code == 401:
             self.do_AUTHHEAD()
             return
-        
+
+        if http_code == 200:
+            self.run_POST(body)
+            return
+
+        # some other error
         self.send_response(http_code)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
@@ -202,17 +211,18 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             return
         
 
-    def do_POST(self):
+    def run_POST(self, rec):
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
 
         self.tid = str(uuid.uuid4())
-
+        
         return_body = dict()
         messages = []
         try:
-            translation = translator.Translation(post_body, self.tid)
+            translation = translator.Translation(post_body, self.tid, rec["username"])
 
+            print(translation.gsl_result)
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
 
@@ -221,9 +231,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
                 socket = ctx.socket(zmq.REQ)
             else:
                 socket = ctx.socket(zmq.PUSH)
-
             socket.connect(translation.service.value['address'])
-            
             messages.append(translation.gsl_result.encode('utf-8'))
             messages.append("None".encode('utf-8'))
             socket.send_multipart(messages)
@@ -281,6 +289,19 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         self.do_AUTHHEAD()
 
+    def do_POST(self):
+        if not 'Authorization' in self.headers:
+            self.do_AUTHHEAD()
+            self.wfile.write('no auth header received'.encode("utf-8"))
+            return
+
+        auth_string = self.headers['Authorization']
+        if auth_string.startswith("Bearer"):
+            self.check_auth_token(auth_string[7:].strip())
+            return
+        self.do_AUTHHEAD()
+
+        
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
