@@ -9,6 +9,7 @@ import logging.handlers
 import argparse
 from time import sleep
 from os import curdir, sep
+import sys
 
 from urllib.parse import urlparse
 
@@ -287,19 +288,28 @@ def main():
     parser.add_argument('-p', '--port', default='8000', type=int, help='Service port')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show debug logs')
     parser.add_argument('-l', '--log-path', default='json-gsl-gateway.log', help='log file')
+    parser.add_argument('-s', '--service', action='store_true', help='Print logs to stdout in service mode')
 
     args = parser.parse_args()
     logger.setLevel(logging.INFO)
     if args.verbose:
         logger.setLevel(logging.DEBUG)
 
-    handler = logging.handlers.RotatingFileHandler(args.log_path, maxBytes=(50 * 1024 ** 2), backupCount=5)
-    handler.setLevel(logger.level)
-
     formatter = logging.Formatter('%(filename)s:%(lineno)d [%(levelname)-6s] (%(asctime)s): %(message)s')
-    handler.setFormatter(formatter)
 
-    logger.addHandler(handler)
+    if not args.service:
+        handler = logging.handlers.RotatingFileHandler(args.log_path, maxBytes=(50 * 1024 ** 2), backupCount=5)
+        handler.setLevel(logger.level)
+        handler.setFormatter(formatter)
+
+        logger.addHandler(handler)
+
+    else:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(logger.level)
+        handler.setFormatter(formatter)
+
+        logger.addHandler(handler)
 
     Handler = JsonGateway
     Handler.server_version = "Knowdy HTTP Gateway"
