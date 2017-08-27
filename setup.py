@@ -1,6 +1,5 @@
 
-from setuptools import setup, find_packages
-from os import path
+from setuptools import setup
 
 setup(
     name='knd-json-gateway',
