@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(
-    name='knd-json-gateway',
+    name='knowdy-json-gateway',
     version='0.0.1',
     description='gateway to provide json-pure api',
     author='Globbie',
@@ -20,5 +20,7 @@ setup(
             'knd-json-gateway=json_gateway.__main__:main'
         ]
     },
-
+    data_files=[
+        ('/usr/lib/systemd/system', ['etc/systemd/knd-json-gateway.service'])
+    ],
 )
