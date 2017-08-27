@@ -11,7 +11,6 @@ from time import sleep
 from os import curdir, sep
 
 from urllib.parse import urlparse
-import base64
 
 import translator
 from translator import KnowdyService
@@ -19,7 +18,6 @@ from translator import KnowdyService
 logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
 RETRIEVE_TIMEOUT = 0.05  # ms
-basic_auth_key = ""
 
 class JsonGateway(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
@@ -132,6 +130,37 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(msg)
 
+
+    def check_auth_token(self, tok):
+        print(".. checking token: %s" % tok)
+        ctx = zmq.Context()
+        socket = ctx.socket(zmq.REQ)
+        socket.connect(KnowdyService.auth.value['address'])
+        messages = []
+        task = "{task{user{auth{sid %s}}}}" % (tok)
+        messages.append(task.encode('utf-8'))
+        messages.append("None".encode('utf-8'))
+        socket.send_multipart(messages)
+
+        head = socket.recv()
+        msg = socket.recv()
+        logger.debug(msg)
+
+        body = json.loads(msg.decode('utf-8'))
+
+        http_code = 401
+        if "http_code" in body:
+            http_code = body["http_code"]
+
+        if http_code == 401:
+            self.do_AUTHHEAD()
+            return
+        
+        self.send_response(http_code)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(msg)
+        
     def run_GET(self):
         filename = self.path
         if self.path.endswith("/"):
@@ -235,30 +264,24 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def do_AUTHHEAD(self):
         self.send_response(401)
-        self.send_header('WWW-Authenticate', 'Basic realm=\"test\"')
-        self.send_header('Content-type', 'text/html')
+        self.send_header('WWW-Authenticate', 'Bearer realm=\"test\"')
+        self.send_header('Content-type', 'application/json')
         self.end_headers()
 
     def do_GET(self):
-        global basic_auth_key
         if not 'Authorization' in self.headers:
             self.do_AUTHHEAD()
             self.wfile.write('no auth header received'.encode("utf-8"))
             return
 
-        if self.headers['Authorization'] == basic_auth_key:
-            self.run_GET()
-            pass
-        else:
-            self.do_AUTHHEAD()
-            #self.wfile.write(self.headers['Authorization'])
-            self.wfile.write('not authenticated'.encode("utf-8"))
-            pass
+        auth_string = self.headers['Authorization']
+        if auth_string.startswith("Bearer"):
+            self.check_auth_token(auth_string[7:].strip())
+            return
+
+        self.do_AUTHHEAD()
 
 if __name__ == '__main__':
-    
-    key = base64.b64encode("test:test".encode("utf-8"))
-    basic_auth_key = "Basic " + key.decode("ascii")
 
     parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
     parser.add_argument('-i', '--interface', default='0.0.0.0', type=str, help='The interface to listen')
@@ -267,7 +290,6 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--log-path', default='json-gsl-gateway.log', help='log file')
 
     args = parser.parse_args()
-
     logger.setLevel(logging.INFO)
     if args.verbose:
         logger.setLevel(logging.DEBUG)
@@ -285,5 +307,4 @@ if __name__ == '__main__':
 
     httpd = socketserver.TCPServer((args.interface, args.port), Handler)
     logger.info("serving at %s:%s" % (args.interface, args.port))
-
     httpd.serve_forever()
