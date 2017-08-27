@@ -5,4 +5,4 @@ After=network.target
 [Service]
 Type=simple
 User=json-gateway
-ExecStart=knd-json-gateway
+ExecStart=knd-json-gateway -s -v
