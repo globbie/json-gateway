@@ -97,7 +97,7 @@ class Translation:
             if key == 'async':
                 continue
             if key == 'sid':
-                output_dict.append('{username %s}' % (self.username))
+                output_dict.append('{id %s}' % (self.username))
                 continue
             
             if type(value) == dict:
