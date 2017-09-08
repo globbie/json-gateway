@@ -218,7 +218,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body = dict()
         messages = []
         try:
-            translation = translator.Translation(post_body, self.tid, rec["user"])
+            translation = json_gateway.translator.Translation(post_body, self.tid, rec["user"])
             print(translation.gsl_result)
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
