@@ -218,8 +218,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body = dict()
         messages = []
         try:
-            translation = json_gateway.translator.Translation(post_body, self.tid, rec["username"])
-
+            translation = translator.Translation(post_body, self.tid, rec["user"])
             print(translation.gsl_result)
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
@@ -247,7 +246,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             socket.close()
             self.wait_for_result()
             return
-
         except KeyError as e:
             return_body['error'] = "malformed request"
             logger.warning("malformed request")
