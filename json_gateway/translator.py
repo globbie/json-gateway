@@ -96,7 +96,7 @@ class Translation:
                 continue
             if key == 'async':
                 continue
-            if key == 'sid':
+            if key == 'auth':
                 output_dict.append('{id %s}' % (self.username))
                 continue
             
