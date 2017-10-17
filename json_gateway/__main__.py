@@ -47,7 +47,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             return
 
         # TODO: set http return codes based on result
-        
+
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
@@ -96,7 +96,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def wait_for_result(self):
         messages = []
-        
+
         task = "{task  {user {auth{sid AUTH_SERVER_SID}} {retrieve {tid %s}}}}" % (self.tid)
         messages.append(task.encode('utf-8'))
         messages.append("None".encode('utf-8'))
@@ -147,7 +147,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         head = socket.recv()
         msg = socket.recv()
         logger.debug(msg)
-        
+
         body = json.loads(msg.decode('utf-8'))
         socket.close()
 
@@ -168,7 +168,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(msg)
-        
+
     def run_GET(self):
         filename = self.path
         if self.path.endswith("/"):
@@ -202,7 +202,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             #    self.wfile.write(text)
             #else:
             self.wfile.write(data)
-                
+
             f.close()
             return
         except IOError:
@@ -214,11 +214,11 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         post_body = self.rfile.read(length).decode('utf-8')
 
         self.tid = str(uuid.uuid4())
-        
+
         return_body = dict()
         messages = []
         try:
-            translation = json_gateway.translator.Translation(post_body, self.tid, rec["user"])
+            translation = json_gateway.translator.Translation(post_body, self.tid, rec["user_id"])
             print(translation.gsl_result)
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
