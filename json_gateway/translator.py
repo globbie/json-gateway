@@ -21,12 +21,12 @@ class Action(enum.Enum):
 
 
 class Translation:
-    def __init__(self, input_: str, tid_: str = None, username_: str = None):
+    def __init__(self, input_: str, tid_: str = None, user_id_: int = 0):
         self.gsl_result = None
         self.service = KnowdyService.read
         self.async = False
         self.tid = tid_
-        self.username = username_
+        self.user_id = user_id_
         self.json_parse(input_)
 
     def json_parse_unit(self, unit_key: str, input_dict: dict) -> str:
@@ -96,8 +96,8 @@ class Translation:
                 continue
             if key == 'async':
                 continue
-            if key == 'sid':
-                output_dict.append('{id %s}' % (self.username))
+            if key == 'auth':
+                output_dict.append('{id %d}' % (self.user_id))
                 continue
             
             if type(value) == dict:

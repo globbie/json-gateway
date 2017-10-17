@@ -209,7 +209,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             self.send_error(404, 'File Not Found: %s' % self.path)
             return
 
-    def run_POST(self, rec):
+    def run_POST(self, auth_rec):
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
 
@@ -218,7 +218,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body = dict()
         messages = []
         try:
-            translation = json_gateway.translator.Translation(post_body, self.tid, rec["user"])
+            translation = json_gateway.translator.Translation(post_body, self.tid, auth_rec["user_id"])
             print(translation.gsl_result)
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
