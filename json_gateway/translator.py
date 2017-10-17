@@ -79,6 +79,8 @@ class Translation:
             output_dict.append('{')
 
         output_dict.append(unit_key)
+        if key == 'user':
+            output_dict.append('{id %d}' % (self.user_id))
 
         if 'n' in input_dict:  # reserved keyword for name
             value = input_dict['n']
@@ -95,9 +97,6 @@ class Translation:
             if key == 'n':
                 continue
             if key == 'async':
-                continue
-            if key == 'user':
-                output_dict.append('{id %d}' % (self.user_id))
                 continue
             
             if type(value) == dict:
