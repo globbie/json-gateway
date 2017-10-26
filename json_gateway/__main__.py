@@ -148,6 +148,9 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         msg = socket.recv()
         logger.debug(msg)
 
+        # HACK to fix initial corrupted '{'
+        msg[0] = '{'
+
         body = json.loads(msg.decode('utf-8'))
         socket.close()
 

@@ -91,7 +91,6 @@ class Translation:
 
             if type(value) != str:
                 raise TypeError
-
             logging.debug('name: \'%s\'' % value)
             output_dict.append(' %s' % value)
 
