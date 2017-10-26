@@ -80,8 +80,6 @@ class Translation:
             output_dict.append('{')
 
         output_dict.append(unit_key)
-        if key == 'user':
-            output_dict.append('{id %d}' % (self.user_id))
 
         if 'user' == unit_key:
             output_dict.append('{id %d}' % (self.user_id))
