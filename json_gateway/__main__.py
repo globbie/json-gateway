@@ -11,8 +11,8 @@ from time import sleep
 from os import curdir, sep
 import sys
 
-import json_gateway.translator
-from json_gateway.translator import KnowdyService
+import translator
+from translator import KnowdyService
 
 logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
@@ -218,7 +218,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body = dict()
         messages = []
         try:
-            translation = json_gateway.translator.Translation(post_body, self.tid, auth_rec["user_id"])
+            translation = translator.Translation(post_body, self.tid, auth_rec["user_id"])
             print(translation.gsl_result)
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
