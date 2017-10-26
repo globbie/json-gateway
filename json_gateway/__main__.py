@@ -151,7 +151,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         # HACK to fix initial corrupted '{'
         msg_array = bytearray(msg)
         msg_array[0] = ord('{')
-        msg = b''.join(msg_array) 
+        msg = bytes(msg_array)
 
         body = json.loads(msg.decode('utf-8'))
         socket.close()
