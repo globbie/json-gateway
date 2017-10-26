@@ -161,7 +161,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             http_code = body["http_code"]
 
         if http_code == 401:
-            self.do_AUTHHEAD()
+            self.do_AUTHHEAD(msg)
             return
 
         if http_code == 200:
@@ -271,16 +271,16 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
-    def do_AUTHHEAD(self):
+    def do_AUTHHEAD(self, msg):
         self.send_response(401)
-        self.send_header('WWW-Authenticate', 'Bearer realm=\"test\"')
+        self.send_header('WWW-Authenticate', 'Bearer realm=\"devel\"')
         self.send_header('Content-type', 'application/json')
         self.end_headers()
+        self.wfile.write(msg)
 
     def do_GET(self):
         if not 'Authorization' in self.headers:
-            self.do_AUTHHEAD()
-            self.wfile.write('no auth header received'.encode("utf-8"))
+            self.do_AUTHHEAD("{\"http_code\":401,\"err\":\"auth header missing\"}".encode("utf-8"))
             return
 
         auth_string = self.headers['Authorization']
@@ -288,19 +288,18 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             self.check_auth_token(auth_string[7:].strip())
             return
 
-        self.do_AUTHHEAD()
+        self.do_AUTHHEAD("{\"http_code\":401}".encode("utf-8"))
 
     def do_POST(self):
         if not 'Authorization' in self.headers:
-            self.do_AUTHHEAD()
-            self.wfile.write('no auth header received'.encode("utf-8"))
+            self.do_AUTHHEAD("{\"http_code\":401,\"err\":\"auth header missing\"}".encode("utf-8"))
             return
 
         auth_string = self.headers['Authorization']
         if auth_string.startswith("Bearer"):
             self.check_auth_token(auth_string[7:].strip())
             return
-        self.do_AUTHHEAD()
+        self.do_AUTHHEAD("{\"http_code\":401,\"err\":\"invalid token\"}".encode("utf-8"))
 
 def main():
     parser = argparse.ArgumentParser(description='Handles json request to Knowdy via HTTP')
