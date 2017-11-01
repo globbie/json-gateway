@@ -53,7 +53,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
                 http_code = body["http_code"]
 
         self.send_response(http_code)
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(msg)
 
@@ -62,7 +62,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body['status'] = "in progress"
         return_body['estimate'] = "5m"
         self.send_response(202)
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         reply = json.dumps(return_body).encode('utf-8')
         self.wfile.write(reply)
@@ -72,7 +72,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body['err'] = "malformed request"
         logger.warning("malformed request")
         self.send_response(400)
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
@@ -81,7 +81,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return_body = dict()
         return_body['tid'] = str(self.tid)
         self.send_response(202)
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
@@ -92,7 +92,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         logger.debug(msg)
         return_body = json.loads(msg)
         self.send_response(200)
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         return_body = json.dumps(return_body).encode('utf-8')
         self.wfile.write(return_body)
@@ -140,7 +140,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
                     http_code = body["http_code"]
 
         self.send_response(http_code)
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(msg)
 
@@ -177,7 +177,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         # some other error
         self.send_response(http_code)
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(msg)
 
@@ -192,21 +192,21 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             data = f.read()
             text = None
             if filename.endswith(".html"):
-                self.send_header('Content-type', 'text/html')
+                self.send_header('Content-Type', 'text/html')
             elif  filename.endswith(".js"):
-                self.send_header('Content-type', 'text/javascript')
+                self.send_header('Content-Type', 'text/javascript')
             elif  filename.endswith(".css"):
-                self.send_header('Content-type', 'text/css')
+                self.send_header('Content-Type', 'text/css')
             elif  filename.endswith(".svg"):
-                self.send_header('Content-type', 'image/svg+xml')
+                self.send_header('Content-Type', 'image/svg+xml')
             elif filename.endswith(".jpg"):
-                self.send_header('Content-type', 'image/jpeg')
+                self.send_header('Content-Type', 'image/jpeg')
             elif filename.endswith(".woff"):
-                self.send_header('Content-type', 'application/font-woff')
+                self.send_header('Content-Type', 'application/font-woff')
             elif filename.endswith(".png"):
-                self.send_header('Content-type', 'image/png')
+                self.send_header('Content-Type', 'image/png')
             else:
-                self.send_header('Content-type', 'application/binary')
+                self.send_header('Content-Type', 'application/binary')
 
             self.end_headers()
 
@@ -233,7 +233,9 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         cont_type = "application/json"
         if 'Content-Type' in self.headers:
             cont_type = self.headers['Content-Type'].strip()
-            print("Content-Type: \"%s\"" % cont_type)
+
+        print("Content-Type: \"%s\"" % cont_type)
+        print(self.headers)
         if cont_type == "text/plain":
             print("GSL input?")
             self.send_GSL(auth_rec["user_id"])
@@ -284,20 +286,20 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             logger.exception("internal error")
             self.send_response(500)
 
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         reply = json.dumps(return_body).encode('utf-8')
         self.wfile.write(reply)
 
     def do_HEAD(self):
         self.send_response(200)
-        self.send_header('Content-type', 'text/html')
+        self.send_header('Content-Type', 'text/html')
         self.end_headers()
 
     def do_AUTHHEAD(self, msg):
         self.send_response(401)
         self.send_header('WWW-Authenticate', 'Bearer realm=\"devel\"')
-        self.send_header('Content-type', 'application/json')
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(msg)
 
