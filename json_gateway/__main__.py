@@ -221,11 +221,25 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             self.send_error(404, 'File Not Found: %s' % self.path)
             return
 
+    def send_GSL(self, user_id):
+        self.send_bad_request()
+
     def run_POST(self, auth_rec):
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
 
         self.tid = str(uuid.uuid4())
+
+        cont_type = "application/json"
+        if 'Content-Type' in self.headers:
+            cont_type = self.headers['Content-Type'])
+        if cont_type == "text/plain":
+            self.send_GSL(auth_rec["user_id"])
+            return
+
+        if cont_type != "application/json":
+            self.send_bad_request()
+            return
 
         return_body = dict()
         messages = []
