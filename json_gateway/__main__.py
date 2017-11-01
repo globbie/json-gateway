@@ -243,6 +243,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         buf.append(body)
         msg = "".join(buf)
 
+        messages = []
         ctx = zmq.Context()
         socket = ctx.socket(zmq.PUSH)
         # TODO: select read/write
