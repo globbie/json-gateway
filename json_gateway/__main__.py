@@ -24,6 +24,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         super(JsonGateway, self).__init__(request, client_address, server)
         self.tid = None
         self.sid = None
+        self.locale = None
 
     def ask_delivery(self):
         ctx = zmq.Context()
@@ -223,12 +224,23 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def send_GSL(self, body, user_id):
         buf = []
-        buf.append("{task{user ")
+        buf.append("{task")
+        # TODO: check the list of accepted locales
+        if self.locale:
+            buf.append("{locale ")
+            buf.append(self.locale)
+            buf.append("}")
+
+        if body.startswith("{task"):
+            body = body[5:].strip()
+
+        if body.startswith("{user"):
+            body = body[5:].strip()
+
+        buf.append("{user ")
         buf.append(str(user_id))
-        if body.startswith("{task{user"):
-            buf.append(body[10:])
-        else:
-            buf.append(body)
+
+        buf.append(body)
         msg = "".join(buf)
 
         ctx = zmq.Context()
@@ -248,12 +260,16 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         self.tid = str(uuid.uuid4())
 
+        self.locale = None
+        if 'Accept-Language' in self.headers:
+            self.locale = self.headers['Accept-Language'].strip()
+
         cont_type = "application/json"
         if 'Content-Type' in self.headers:
             cont_type = self.headers['Content-Type'].strip()
 
         if cont_type == "text/plain":
-            self.send_GSL(post_body, auth_rec["user_id"])
+            self.send_GSL(post_body.strip(), auth_rec["user_id"])
             return
 
         if cont_type != "application/json":
