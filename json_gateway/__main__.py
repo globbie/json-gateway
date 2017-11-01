@@ -39,19 +39,22 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         head = socket.recv()
         msg = socket.recv()
 
-        logger.debug(msg)
+        #logger.debug(msg)
 
         body = json.loads(msg.decode('utf-8'))
         if "status" in body:
             self.send_wait_reply()
             return
 
-        # TODO: set http return codes based on result
+        http_code = 200
+        if "err" in body:
+            http_code = 500
+            if "http_code" in body:
+                http_code = body["http_code"]
 
-        self.send_response(200)
+        self.send_response(http_code)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
-        # reply = json.dumps(body).encode('utf-8')
         self.wfile.write(msg)
 
     def send_wait_reply(self):
@@ -66,7 +69,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def send_bad_request(self):
         return_body = dict()
-        return_body['error'] = "malformed request"
+        return_body['err'] = "malformed request"
         logger.warning("malformed request")
         self.send_response(400)
         self.send_header('Content-type', 'application/json')
@@ -100,7 +103,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         task = "{task  {user {auth{sid AUTH_SERVER_SID}} {retrieve {tid %s}}}}" % (self.tid)
         messages.append(task.encode('utf-8'))
         messages.append("None".encode('utf-8'))
-        msg = "{\"error\": \"timed out\"}".encode('utf-8')
+        msg = "{\"err\": \"timed out\"}".encode('utf-8')
+        body = {}
         timeout = RETRIEVE_TIMEOUT
         num_attempts = 0
 
@@ -115,8 +119,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             msg = socket.recv()
             logger.debug(msg)
             socket.close()
-            print("RETRIEVAL attempt: %d.." % num_attempts)
-            print(msg)
+            #print("RETRIEVAL attempt: %d.." % num_attempts)
+            #print(msg)
             body = json.loads(msg.decode('utf-8'))
             if 'wait' not in body:
                 break
@@ -126,13 +130,21 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
                 break
             timeout *= 2
 
-        self.send_response(200)
+        http_code = 200
+        if not body:
+            http_code = 500
+        else:
+            if "err" in body:
+                http_code = 500
+                if "http_code" in body:
+                    http_code = body["http_code"]
+
+        self.send_response(http_code)
         self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(msg)
 
     def check_auth_token(self, tok):
-        print(".. checking token: %s" % tok)
         ctx = zmq.Context()
         socket = ctx.socket(zmq.REQ)
         socket.connect(KnowdyService.auth.value['address'])
@@ -147,11 +159,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         head = socket.recv()
         msg = socket.recv()
         logger.debug(msg)
-
-        # HACK to fix initial corrupted '{'
-        msg_array = bytearray(msg)
-        msg_array[0] = ord('{')
-        msg = bytes(msg_array)
 
         body = json.loads(msg.decode('utf-8'))
         socket.close()
