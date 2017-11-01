@@ -225,6 +225,10 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
     def send_GSL(self, body, user_id):
         buf = []
         buf.append("{task")
+        buf.append("{tid ")
+        buf.append(self.tid)
+        buf.append("}")
+
         # TODO: check the list of accepted locales
         if self.locale:
             buf.append("{locale ")
