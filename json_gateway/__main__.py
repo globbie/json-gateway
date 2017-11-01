@@ -224,7 +224,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
     def send_GSL(self, body, user_id):
         buf = []
         buf.append("{task{user ")
-        buf.append(user_id)
+        buf.append(str(user_id))
         if body.startswith("{task{user"):
             buf.append(body[10:])
         else:
