@@ -221,8 +221,26 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             self.send_error(404, 'File Not Found: %s' % self.path)
             return
 
-    def send_GSL(self, user_id):
-        self.send_bad_request()
+    def send_GSL(self, body, user_id):
+        buf = []
+        buf.append("{task{user ")
+        buf.append(user_id)
+        if body.startswith("{task{user"):
+            buf.append(body[10:])
+        else:
+            buf.append(body)
+        msg = "".join(buf)
+
+        ctx = zmq.Context()
+        socket = ctx.socket(zmq.PUSH)
+        # TODO: select read/write
+        socket.connect(KnowdyService.read.value['address'])
+        messages.append(msg.encode('utf-8'))
+        messages.append("None".encode('utf-8'))
+        socket.send_multipart(messages)
+        socket.close()
+        self.wait_for_result()
+        return
 
     def run_POST(self, auth_rec):
         length = int(self.headers['Content-Length'])
@@ -234,11 +252,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         if 'Content-Type' in self.headers:
             cont_type = self.headers['Content-Type'].strip()
 
-        print("Content-Type: \"%s\"" % cont_type)
-        print(self.headers)
         if cont_type == "text/plain":
-            print("GSL input?")
-            self.send_GSL(auth_rec["user_id"])
+            self.send_GSL(post_body, auth_rec["user_id"])
             return
 
         if cont_type != "application/json":
