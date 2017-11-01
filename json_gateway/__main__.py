@@ -263,6 +263,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.locale = None
         if 'Accept-Language' in self.headers:
             self.locale = self.headers['Accept-Language'].strip()
+            print("LOCALE:")
+            print(self.locale)
 
         cont_type = "application/json"
         if 'Content-Type' in self.headers:
