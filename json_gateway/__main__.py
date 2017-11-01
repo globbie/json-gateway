@@ -262,6 +262,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.tid = str(uuid.uuid4())
 
         self.locale = None
+        print(self.headers)
         if 'Accept-Language' in self.headers:
             self.locale = self.headers['Accept-Language'].strip()
             print("LOCALE:")
