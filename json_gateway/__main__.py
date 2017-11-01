@@ -243,6 +243,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         buf.append(body)
         msg = "".join(buf)
 
+        print(msg)
         messages = []
         ctx = zmq.Context()
         socket = ctx.socket(zmq.PUSH)
@@ -262,11 +263,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.tid = str(uuid.uuid4())
 
         self.locale = None
-        print(self.headers)
         if 'Accept-Language' in self.headers:
             self.locale = self.headers['Accept-Language'].strip()
-            print("LOCALE:")
-            print(self.locale)
 
         cont_type = "application/json"
         if 'Content-Type' in self.headers:
