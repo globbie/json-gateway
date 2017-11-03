@@ -281,8 +281,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         return_body = dict()
         messages = []
-        print("== JSON:")
-        print(post_body)
         try:
             translation = translator.Translation(post_body, self.tid, auth_rec["user_id"])
             print(translation.gsl_result)
@@ -313,12 +311,12 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             self.wait_for_result()
             return
         except KeyError as e:
-            return_body['error'] = "malformed request"
+            return_body['err'] = "malformed request"
             logger.warning("malformed request")
             self.send_response(400)
         except Exception as e:
             logger.exception(e)
-            return_body['error'] = "internal error"
+            return_body['err'] = "internal error"
             logger.exception("internal error")
             self.send_response(500)
 
