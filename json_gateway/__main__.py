@@ -279,8 +279,9 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             self.send_GSL(post_body.strip(), auth_rec["user_id"])
             return
 
+        print(cont_type)
         if cont_type != "application/json":
-            print("-- wrong content type")
+            print("-- wrong content type: \"%s\"" % cont_type)
             self.send_bad_request()
             return
 
