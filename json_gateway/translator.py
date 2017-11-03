@@ -97,6 +97,8 @@ class Translation:
                 continue
             if key == 'n':
                 continue
+            if key == 'id' and 'user' == unit_key:
+                continue
             if key == 'async':
                 continue
             if type(value) == dict:
