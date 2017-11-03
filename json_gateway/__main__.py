@@ -284,6 +284,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         return_body = dict()
         messages = []
+        print("== JSON:")
+        print(post_body)
         try:
             translation = translator.Translation(post_body, self.tid, auth_rec["user_id"])
             print(translation.gsl_result)
