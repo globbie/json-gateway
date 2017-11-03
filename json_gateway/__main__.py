@@ -275,20 +275,11 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             cont_type = self.headers['Content-Type'].strip()
 
         if cont_type == "text/plain":
-            print("..GSL input..")
             self.send_GSL(post_body.strip(), auth_rec["user_id"])
-            return
-
-        print(cont_type)
-        if cont_type != "application/json":
-            print("-- wrong content type: \"%s\"" % cont_type)
-            self.send_bad_request()
             return
 
         return_body = dict()
         messages = []
-        print("== JSON:")
-        print(post_body)
         try:
             translation = translator.Translation(post_body, self.tid, auth_rec["user_id"])
             print(translation.gsl_result)
