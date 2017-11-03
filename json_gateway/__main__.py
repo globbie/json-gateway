@@ -275,9 +275,11 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             cont_type = self.headers['Content-Type'].strip()
 
         if cont_type == "text/plain":
-            print("..GSL input..")
             self.send_GSL(post_body.strip(), auth_rec["user_id"])
             return
+
+        print("BODY:")
+        print(post_body)
 
         return_body = dict()
         messages = []
