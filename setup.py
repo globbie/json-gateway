@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='knowdy-json-gateway',
-    version='0.0.8',
+    version='0.0.9',
     description='gateway to provide json-pure api',
     author='Globbie',
     classifiers=[
