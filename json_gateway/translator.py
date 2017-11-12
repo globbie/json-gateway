@@ -19,7 +19,6 @@ class Action(enum.Enum):
     get = 'get'
     select = 'select'
 
-
 class Translation:
     def __init__(self, input_: str, tid_: str = None, user_id_: int = 0):
         print("-----------------------------")
@@ -103,6 +102,8 @@ class Translation:
                 continue
             if type(value) == dict:
                 output_dict.append(self.json_parse_unit(key, value))
+            elif type(value) == int:
+                output_dict.append('{%s %d}' % (key, value))
             elif type(value) == str:
                 logging.debug('appending %s : %s' % (key, value))
                 output_dict.append('{%s %s}' % (key, value))
