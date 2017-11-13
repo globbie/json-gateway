@@ -279,7 +279,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         print("BODY:")
         print(post_body)
 
-        if cont_type == "text/plain":
+        if "text/plain" in cont_type:
             self.send_GSL(post_body.strip(), auth_rec["user_id"])
             return
 
