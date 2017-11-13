@@ -241,9 +241,9 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         if body.startswith("{user"):
             body = body[5:].strip()
 
-        buf.append("{user ")
+        buf.append("{user {id ")
         buf.append(str(user_id))
-
+        buf.append("}")
         buf.append(body)
         msg = "".join(buf)
 
@@ -274,8 +274,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         if 'Content-Type' in self.headers:
             cont_type = self.headers['Content-Type'].strip()
 
-        print("Content-Type:")
-        print(cont_type)
+        #print("Content-Type:")
+        #print(cont_type)
         print("BODY:")
         print(post_body)
 
