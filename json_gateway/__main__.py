@@ -18,7 +18,7 @@ from translator import KnowdyService
 logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
 RETRIEVE_TIMEOUT = 0.05  # ms
-AUTH_URL=""
+AUTH_URL = "0.0.0.0"
 
 class JsonGateway(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
@@ -40,8 +40,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         head = socket.recv()
         msg = socket.recv()
-
-        #logger.debug(msg)
 
         body = json.loads(msg.decode('utf-8'))
         if "status" in body:
@@ -185,29 +183,18 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def check_auth_token(self, tok):
 
-        r = requests.get(AUTH_URL,\
-                         headers={'Accept': 'application/json', 'Authorization': 'Bearer %s' % tok})
-
+        r = requests.get(AUTH_URL, headers={'Accept': 'application/json', 'Authorization': 'Bearer %s' % tok})
         body = r.json()
-
         print(body)
 
-        http_code = 401
-        if "http_code" in body:
-            http_code = body["http_code"]
-
-        if http_code == 401:
-            self.do_AUTHHEAD(body)
-            return
-
-        if http_code == 200:
+        if "username" in body:
             self.run_POST(body)
             return
 
-        # some other error
-        self.send_response(http_code)
+        self.send_response(401)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
+        msg = json.dumps(body).encode('utf-8')
         self.wfile.write(msg)
 
     def run_GET(self):
@@ -308,13 +295,13 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         print(post_body)
 
         if "text/plain" in cont_type:
-            self.send_GSL(post_body.strip(), auth_rec["user_id"])
+            self.send_GSL(post_body.strip(), auth_rec["id"])
             return
 
         return_body = dict()
         messages = []
         try:
-            translation = translator.Translation(post_body, self.tid, auth_rec["user_id"])
+            translation = translator.Translation(post_body, self.tid, auth_rec["id"])
             print(translation.gsl_result)
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
@@ -338,7 +325,6 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
                 self.retrieve_result(socket)
                 socket.close()
                 return
-
             socket.close()
             self.wait_for_result()
             return
@@ -398,6 +384,7 @@ def main():
     parser.add_argument('-p', '--port', default='8000', type=int, help='Service port')
     parser.add_argument('-v', '--verbose', action='store_true', help='Show debug logs')
     parser.add_argument('-l', '--log-path', default='json-gsl-gateway.log', help='log file')
+    parser.add_argument('-a', '--auth-url', default='0.0.0.0', type=str, help='OAuth2 URL')
     parser.add_argument('-s', '--service', action='store_true', help='Print logs to stdout in service mode')
 
     args = parser.parse_args()
@@ -423,6 +410,7 @@ def main():
 
     Handler = JsonGateway
     Handler.server_version = "Knowdy HTTP Gateway"
+    global AUTH_URL = args.auth_url
 
     httpd = socketserver.TCPServer((args.interface, args.port), Handler)
     logger.info("serving at %s:%s" % (args.interface, args.port))
