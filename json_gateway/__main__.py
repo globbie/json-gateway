@@ -186,9 +186,10 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
     def check_auth_token(self, tok):
 
         r = requests.get('https://content.readyforsky.com/api/user/current',\
-                         headers={'Authorization': 'Bearer %s' % tok})
+                         headers={'Accept': 'application/json', 'Authorization': 'Bearer %s' % tok})
 
         body = r.json()
+
         print(body)
 
         http_code = 401
@@ -196,7 +197,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             http_code = body["http_code"]
 
         if http_code == 401:
-            self.do_AUTHHEAD(msg)
+            self.do_AUTHHEAD(body)
             return
 
         if http_code == 200:
