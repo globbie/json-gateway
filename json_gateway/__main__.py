@@ -186,7 +186,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
     def check_auth_token(self, tok):
 
         r = requests.get('https://content.readyforsky.com/api/user/current',\
-                         headers={'Authorization': 'Bearer %s' % tok)
+                         headers={'Authorization': 'Bearer %s' % tok})
 
         body = r.json()
         print(body)
