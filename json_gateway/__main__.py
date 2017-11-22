@@ -18,7 +18,7 @@ from translator import KnowdyService
 logger = logging.getLogger(__name__)
 MAX_RETRIEVE_ATTEMPTS = 10
 RETRIEVE_TIMEOUT = 0.05  # ms
-
+AUTH_URL=""
 
 class JsonGateway(http.server.BaseHTTPRequestHandler):
     def __init__(self, request, client_address, server):
@@ -185,7 +185,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
     def check_auth_token(self, tok):
 
-        r = requests.get('https://content.readyforsky.com/api/user/current',\
+        r = requests.get(AUTH_URL,\
                          headers={'Accept': 'application/json', 'Authorization': 'Bearer %s' % tok})
 
         body = r.json()
