@@ -10,6 +10,7 @@ import argparse
 from time import sleep
 from os import curdir, sep
 import sys
+import requests
 
 import translator
 from translator import KnowdyService
@@ -145,7 +146,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(msg)
 
-    def check_auth_token(self, tok):
+    def check_auth_token_ZMQ(self, tok):
         ctx = zmq.Context()
         socket = ctx.socket(zmq.REQ)
         socket.connect(KnowdyService.auth.value['address'])
@@ -163,6 +164,32 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
 
         body = json.loads(msg.decode('utf-8'))
         socket.close()
+
+        http_code = 401
+        if "http_code" in body:
+            http_code = body["http_code"]
+
+        if http_code == 401:
+            self.do_AUTHHEAD(msg)
+            return
+
+        if http_code == 200:
+            self.run_POST(body)
+            return
+
+        # some other error
+        self.send_response(http_code)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(msg)
+
+    def check_auth_token(self, tok):
+
+        r = requests.get('https://content.readyforsky.com/api/user/current',\
+                         headers={'Authorization': 'Bearer %s' % tok)
+
+        body = r.json()
+        print(body)
 
         http_code = 401
         if "http_code" in body:
