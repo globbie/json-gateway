@@ -10,7 +10,7 @@ import uuid
 class KnowdyService(enum.Enum):
     delivery = {'address': 'ipc:///var/lib/knowdy/delivery/inbox'}
     auth = {'address': 'ipc:///var/lib/knowdy/auth/inbox'}
-    read = {'address': 'tcp://127.0.0.1:6900'}
+    read = {'address': 'ipc:///var/lib/knowdy/coll_req'}
     write = {'address': 'tcp://127.0.0.1:6908'}
 
 
@@ -20,7 +20,7 @@ class Action(enum.Enum):
     select = 'select'
 
 class Translation:
-    def __init__(self, input_: str, tid_: str = None, user_id_: int = 0):
+    def __init__(self, input_: str, tid_: str = None, user_id_: str = "testdevel"):
         print("-----------------------------")
         self.gsl_result = None
         self.service = KnowdyService.read
@@ -81,7 +81,7 @@ class Translation:
         output_dict.append(unit_key)
 
         if 'user' == unit_key:
-            output_dict.append('{id %d}' % (self.user_id))
+            output_dict.append(' %s' % (self.user_id))
 
         if 'n' in input_dict:  # reserved keyword for name
             value = input_dict['n']

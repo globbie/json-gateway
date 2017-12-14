@@ -37,10 +37,10 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         messages.append(task.encode('utf-8'))
         messages.append("None".encode('utf-8'))
         socket.send_multipart(messages)
-
+        
         head = socket.recv()
         msg = socket.recv()
-
+        socket.close()
         body = json.loads(msg.decode('utf-8'))
         if "status" in body:
             self.send_wait_reply()
@@ -118,10 +118,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
             head = socket.recv()
             msg = socket.recv()
             logger.debug(msg)
-            socket.close()
-            #print("RETRIEVAL attempt: %d.." % num_attempts)
-            #print(msg)
             body = json.loads(msg.decode('utf-8'))
+            socket.close()
             if 'wait' not in body:
                 break
 
@@ -276,6 +274,7 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         return
 
     def run_POST(self, auth_rec):
+        print(self.headers)
         length = int(self.headers['Content-Length'])
         post_body = self.rfile.read(length).decode('utf-8')
 
@@ -295,13 +294,13 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         print(post_body)
 
         if "text/plain" in cont_type:
-            self.send_GSL(post_body.strip(), auth_rec["id"])
+            self.send_GSL(post_body.strip(), auth_rec["username"])
             return
 
         return_body = dict()
         messages = []
         try:
-            translation = translator.Translation(post_body, self.tid, auth_rec["id"])
+            translation = translator.Translation(post_body, self.tid, auth_rec["username"])
             print(translation.gsl_result)
             logger.debug(translation.gsl_result)
             logger.debug(repr(translation.service))
@@ -371,7 +370,8 @@ class JsonGateway(http.server.BaseHTTPRequestHandler):
         if not 'Authorization' in self.headers:
             self.do_AUTHHEAD("{\"http_code\":401,\"err\":\"auth header missing\"}".encode("utf-8"))
             return
-
+        print("HEADERS:")
+        print(self.headers)
         auth_string = self.headers['Authorization']
         if auth_string.startswith("Bearer"):
             self.check_auth_token(auth_string[7:].strip())
@@ -410,7 +410,8 @@ def main():
 
     Handler = JsonGateway
     Handler.server_version = "Knowdy HTTP Gateway"
-    global AUTH_URL = args.auth_url
+    global AUTH_URL
+    AUTH_URL = args.auth_url
 
     httpd = socketserver.TCPServer((args.interface, args.port), Handler)
     logger.info("serving at %s:%s" % (args.interface, args.port))
