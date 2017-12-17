@@ -10,9 +10,8 @@ import uuid
 class KnowdyService(enum.Enum):
     delivery = {'address': 'ipc:///var/lib/knowdy/delivery/inbox'}
     auth = {'address': 'ipc:///var/lib/knowdy/auth/inbox'}
-    read = {'address': 'ipc:///var/lib/knowdy/coll_req'}
-    write = {'address': 'tcp://127.0.0.1:6908'}
-
+    read = {'address': 'ipc:///var/lib/knowdy/retriever'}
+    write = {'address': 'ipc:///var/lib/knowdy/learner'}
 
 class Action(enum.Enum):
     new = 'new'
